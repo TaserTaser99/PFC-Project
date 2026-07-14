@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PFC Planner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-glow bg-glow-one"></div>
+    <div class="bg-glow bg-glow-two"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <h1>PFC Planner</h1>
+        <p>Course search, social planning, and progression in one place.</p>
+      </div>
+      <nav class="tabs" aria-label="Main tabs">
+        <button class="tab active" data-tab="search">Course Search</button>
+        <button class="tab" data-tab="heatmap">Planner Heatmap</button>
+        <button class="tab" data-tab="progression">Degree Progression</button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="content-column">
+        <section id="tab-search" class="tab-panel active" aria-label="Course search panel">
+          <div class="panel-head">
+            <h2>Course Search + Recommender</h2>
+            <p>Search by code or course name and see which friends are taking each course.</p>
+          </div>
+
+          <div class="search-row card">
+            <label for="course-search">Search by Course Name / ID</label>
+            <input id="course-search" type="text" placeholder="Try COMP1511 or Discrete" />
+            <small id="search-meta"></small>
+          </div>
+
+          <div id="search-results" class="result-grid"></div>
+
+          <div class="panel-head compact">
+            <h3>Recommended Courses for You</h3>
+          </div>
+          <div class="card">
+            <label for="recommend-user">Recommendation profile</label>
+            <select id="recommend-user"></select>
+          </div>
+          <div id="recommendations" class="result-grid"></div>
+        </section>
+
+        <section id="tab-heatmap" class="tab-panel" aria-label="Heatmap panel">
+          <div class="panel-head">
+            <h2>Course Planner Heatmap</h2>
+            <p>Select a term to see how many friends are planning each course.</p>
+          </div>
+
+          <div class="card heatmap-controls">
+            <label for="term-select">Term</label>
+            <select id="term-select">
+              <option value="1">Term 1</option>
+              <option value="2">Term 2</option>
+              <option value="3">Term 3</option>
+            </select>
+          </div>
+
+          <div id="heatmap-grid" class="heatmap-grid"></div>
+        </section>
+
+        <section id="tab-progression" class="tab-panel" aria-label="Degree progression panel">
+          <div class="panel-head">
+            <h2>Degree Progression</h2>
+            <p>A MyPlan-style checklist and term flow for required courses.</p>
+          </div>
+
+          <div class="card progression-controls">
+            <label for="progress-user">Student</label>
+            <select id="progress-user"></select>
+          </div>
+
+          <div class="progress-wrap card">
+            <div class="progress-label-row">
+              <strong id="progress-text"></strong>
+              <span id="progress-count"></span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+          </div>
+
+          <div id="degree-grid" class="degree-grid"></div>
+          <div id="plan-timeline" class="plan-timeline"></div>
+        </section>
+      </section>
+
+      <aside class="sidebar" aria-label="Friends list sidebar">
+        <div class="panel-head compact">
+          <h3>Friends List</h3>
+        </div>
+
+        <div class="card add-friend-form">
+          <label for="friend-name">Add Friend</label>
+          <input id="friend-name" type="text" placeholder="Friend name" />
+          <button id="add-friend-btn" class="primary">Add Friend</button>
+        </div>
+
+        <div class="panel-head compact">
+          <h3>Your Friends</h3>
+        </div>
+        <div id="friends-list" class="friends-list"></div>
+
+        <div class="panel-head compact">
+          <h3>User Database</h3>
+        </div>
+        <div id="user-database" class="user-database"></div>
+      </aside>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
