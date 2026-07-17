@@ -1,9 +1,30 @@
+import type { Database } from 'better-sqlite3'
 import { courses, users } from './data/sampleData.js'
 import type {
+    Course,
 	CourseRecommendation,
 	RecommendationResult,
 	SharedRecommendationResult
 } from './models.js'
+
+export function searchCourses(db: Database, query: string): CourseRecommendation[] {
+    const pattern = `%${query}%`
+    const dbReq = db.prepare(`
+        SELECT id, code, title, workload, popularity, term
+        FROM courses
+        WHERE code LIKE ? COLLATE NOCASE
+        OR title LIKE ? COLLATE NOCASE
+    `)
+
+    const matchingCourses = dbReq.all(pattern, pattern) as Course[]
+
+    return matchingCourses.map((course) => ({
+        course,
+        score: 0,
+        predictedWorkload: course.workload,
+        friendCount: 0
+    }))
+}
 
 function scoreCourse(courseId: string, userIds: string[]): CourseRecommendation | null {
 	const course = courses.find((c) => c.id === courseId)
