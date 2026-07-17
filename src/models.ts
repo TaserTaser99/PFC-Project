@@ -15,6 +15,26 @@ export type User = {
   completedCourseIds: string[]
 }
 
+export type UserProfile = Omit<User, 'friendIds'> & {
+  createdAt: string
+}
+
+export type FriendRequest = {
+  id: string
+  senderId: string
+  recipientId: string
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
+  createdAt: string
+  updatedAt?: string
+}
+
+export type Friendship = {
+  id: string
+  userA: string
+  userB: string
+  createdAt: string
+}
+
 export type RecommendationRequest = {
   userId: string
   threshold: number

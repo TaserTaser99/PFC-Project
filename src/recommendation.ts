@@ -1,86 +1,73 @@
-import type { Database } from 'better-sqlite3'
-import { courses, users } from './data/sampleData.js'
+import { courses, users as sampleUsers } from './data/sampleData.js'
 import type {
-    Course,
-	CourseRecommendation,
-	RecommendationResult,
-	SharedRecommendationResult
+  CourseRecommendation,
+  RecommendationResult,
+  SharedRecommendationResult,
+  User
 } from './models.js'
 
-export function searchCourses(db: Database, query: string): CourseRecommendation[] {
-    const pattern = `%${query}%`
-    const dbReq = db.prepare(`
-        SELECT id, code, title, workload, popularity, term
-        FROM courses
-        WHERE code LIKE ? COLLATE NOCASE
-        OR title LIKE ? COLLATE NOCASE
-    `)
+type RecommendationUser = Omit<User, 'friendIds'> & { friendIds?: string[] }
 
-    const matchingCourses = dbReq.all(pattern, pattern) as Course[]
+function scoreCourse(
+  courseId: string,
+  userIds: string[],
+  users: RecommendationUser[]
+): CourseRecommendation | null {
+  const course = courses.find((candidate) => candidate.id === courseId)
+  if (!course) return null
 
-    return matchingCourses.map((course) => ({
-        course,
-        score: 0,
-        predictedWorkload: course.workload,
-        friendCount: 0
-    }))
-}
+  const friendCount = users.filter(
+    (user) => userIds.includes(user.id) && user.completedCourseIds.includes(courseId)
+  ).length
+  const predictedWorkload = course.workload
+  const score = Number(
+    (friendCount * 2 + course.popularity / 100 + (10 - course.workload)).toFixed(2)
+  )
 
-function scoreCourse(courseId: string, userIds: string[]): CourseRecommendation | null {
-	const course = courses.find((c) => c.id === courseId)
-	if (!course) {
-		return null
-	}
-
-	const friendCount = users.filter((u) => userIds.includes(u.id) && u.completedCourseIds.includes(courseId)).length
-	const predictedWorkload = course.workload
-	const score = Number((friendCount * 2 + course.popularity / 100 + (10 - course.workload)).toFixed(2))
-
-	return {
-		course,
-		score,
-		predictedWorkload,
-		friendCount
-	}
+  return { course, score, predictedWorkload, friendCount }
 }
 
 export function recommendCoursesForUser(
-	userId: string,
-	threshold: number,
-	completedCourseIds: string[] = []
+  userId: string,
+  threshold: number,
+  completedCourseIds: string[] = [],
+  allUsers: RecommendationUser[] = sampleUsers,
+  friendIds: string[] = []
 ): RecommendationResult {
-	const user = users.find((u) => u.id === userId)
-	if (!user) {
-		return { userId, courses: [] }
-	}
+  const user = allUsers.find((candidate) => candidate.id === userId)
+  if (!user) return { userId, courses: [] }
 
-	const blocked = new Set([...user.completedCourseIds, ...completedCourseIds])
-	const consideredIds = courses.map((c) => c.id).filter((id) => !blocked.has(id))
+  const blockedCourseIds = new Set([
+    ...user.completedCourseIds,
+    ...completedCourseIds
+  ])
 
-	const recommendations = consideredIds
-		.map((courseId) => scoreCourse(courseId, user.friendIds))
-		.filter((result): result is CourseRecommendation => result !== null)
-		.filter((result) => result.score >= threshold)
-		.sort((a, b) => b.score - a.score)
+  const recommendations = courses
+    .filter((course) => !blockedCourseIds.has(course.id))
+    .map((course) => scoreCourse(course.id, friendIds, allUsers))
+    .filter((result): result is CourseRecommendation => result !== null)
+    .filter((result) => result.score >= threshold)
+    .sort((a, b) => b.score - a.score)
 
-	return {
-		userId,
-		courses: recommendations
-	}
+  return { userId, courses: recommendations }
 }
 
-export function recommendSharedSchedule(userIds: string[], threshold: number): SharedRecommendationResult {
-	const recommendations = courses
-		.map((course) => scoreCourse(course.id, userIds))
-		.filter((result): result is CourseRecommendation => result !== null)
-		.filter((result) => result.score >= threshold)
-		.sort((a, b) => b.score - a.score)
+export function recommendSharedSchedule(
+  userIds: string[],
+  threshold: number,
+  allUsers: RecommendationUser[] = sampleUsers
+): SharedRecommendationResult {
+  const recommendations = courses
+    .map((course) => scoreCourse(course.id, userIds, allUsers))
+    .filter((result): result is CourseRecommendation => result !== null)
+    .filter((result) => result.score >= threshold)
+    .sort((a, b) => b.score - a.score)
 
-	return {
-		userIds,
-		sharedCourses: recommendations,
-		recommendationNote: recommendations.length
-			? 'Found shared courses that meet the threshold.'
-			: 'No shared courses met the threshold.'
-	}
+  return {
+    userIds,
+    sharedCourses: recommendations,
+    recommendationNote: recommendations.length
+      ? 'Found shared courses that meet the threshold.'
+      : 'No shared courses met the threshold.'
+  }
 }
