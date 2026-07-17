@@ -1,22 +1,51 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import type { FriendRequest, Friendship, UserProfile } from './models.js'
+import type { CourseProgressRecord, FriendRequest, Friendship, UserProfile } from './models.js'
 
 const DATA_DIR = path.resolve(process.cwd(), process.env.DB_DIR ?? 'db')
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
 const REQUESTS_FILE = path.join(DATA_DIR, 'friend_requests.json')
 const FRIENDS_FILE = path.join(DATA_DIR, 'friendships.json')
+const COURSE_PROGRESS_FILE = path.join(DATA_DIR, 'course_progress.json')
 
 let mutationQueue: Promise<void> = Promise.resolve()
 
 function createDemoData() {
   const now = new Date().toISOString()
   const users: UserProfile[] = [
-    { id: 'u1', name: 'Alex Chen', preferredWorkload: 18, completedCourseIds: ['c1', 'c2'], createdAt: now },
-    { id: 'u2', name: 'Maya Singh', preferredWorkload: 16, completedCourseIds: ['c2', 'c5'], createdAt: now },
-    { id: 'u3', name: 'Jordan Lee', preferredWorkload: 15, completedCourseIds: ['c1', 'c3'], createdAt: now },
-    { id: 'u4', name: 'Sam Patel', preferredWorkload: 20, completedCourseIds: ['c4'], createdAt: now }
+    {
+      id: 'u1',
+      name: 'Alex Chen',
+      preferredWorkload: 18,
+      completedCourseIds: ['c1', 'c2'],
+      createdAt: now,
+      programCode: 'computer-science'
+    },
+    {
+      id: 'u2',
+      name: 'Maya Singh',
+      preferredWorkload: 16,
+      completedCourseIds: ['c2', 'c5'],
+      createdAt: now,
+      programCode: 'software-engineering'
+    },
+    {
+      id: 'u3',
+      name: 'Jordan Lee',
+      preferredWorkload: 15,
+      completedCourseIds: ['c1', 'c3'],
+      createdAt: now,
+      programCode: 'actuarial-studies'
+    },
+    {
+      id: 'u4',
+      name: 'Sam Patel',
+      preferredWorkload: 20,
+      completedCourseIds: ['c4'],
+      createdAt: now,
+      programCode: 'commerce-finance'
+    }
   ]
   const requests: FriendRequest[] = [
     {
@@ -35,7 +64,22 @@ function createDemoData() {
       createdAt: now
     }
   ]
-  return { users, requests, friendships }
+  const courseProgress: CourseProgressRecord[] = [
+    { userId: 'u1', courseCode: 'COMP1511', status: 'completed' },
+    { userId: 'u1', courseCode: 'COMP1521', status: 'completed' },
+    { userId: 'u1', courseCode: 'MATH1081', status: 'completed' },
+    { userId: 'u1', courseCode: 'COMP1531', status: 'planned' },
+    { userId: 'u2', courseCode: 'COMP1511', status: 'completed' },
+    { userId: 'u2', courseCode: 'COMP1521', status: 'completed' },
+    { userId: 'u2', courseCode: 'COMP1531', status: 'completed' },
+    { userId: 'u2', courseCode: 'DESN1000', status: 'completed' },
+    { userId: 'u3', courseCode: 'ACTL1101', status: 'completed' },
+    { userId: 'u3', courseCode: 'COMM1170', status: 'completed' },
+    { userId: 'u3', courseCode: 'MATH1151', status: 'planned' },
+    { userId: 'u4', courseCode: 'COMM1100', status: 'completed' },
+    { userId: 'u4', courseCode: 'COMM1110', status: 'completed' }
+  ]
+  return { users, requests, friendships, courseProgress }
 }
 
 async function ensureDir() {
@@ -80,16 +124,18 @@ export async function withDbMutation<T>(operation: () => Promise<T>): Promise<T>
 
 export async function migrate() {
   await ensureDir()
-  const [users, requests, friendships] = await Promise.all([
+  const [users, requests, friendships, courseProgress] = await Promise.all([
     readUsers(),
     readRequests(),
-    readFriendships()
+    readFriendships(),
+    readCourseProgress()
   ])
 
   await Promise.all([
     writeUsers(users),
     writeRequests(requests),
-    writeFriendships(friendships)
+    writeFriendships(friendships),
+    writeCourseProgress(courseProgress)
   ])
 }
 
@@ -115,6 +161,11 @@ export async function seedIfEmpty() {
     if (friendships.length === 0) {
       await writeFriendships(createDemoData().friendships)
     }
+
+    const courseProgress = await readCourseProgress()
+    if (courseProgress.length === 0) {
+      await writeCourseProgress(createDemoData().courseProgress)
+    }
   })
 }
 
@@ -124,7 +175,8 @@ export async function resetDemoData() {
     await Promise.all([
       writeUsers(demoData.users),
       writeRequests(demoData.requests),
-      writeFriendships(demoData.friendships)
+      writeFriendships(demoData.friendships),
+      writeCourseProgress(demoData.courseProgress)
     ])
   })
 }
@@ -154,6 +206,15 @@ export async function readFriendships(): Promise<Friendship[]> {
 
 export async function writeFriendships(friendships: Friendship[]) {
   await writeJsonAtomic(FRIENDS_FILE, friendships)
+}
+
+export async function readCourseProgress(): Promise<CourseProgressRecord[]> {
+  await ensureDir()
+  return readJsonArray<CourseProgressRecord>(COURSE_PROGRESS_FILE)
+}
+
+export async function writeCourseProgress(records: CourseProgressRecord[]) {
+  await writeJsonAtomic(COURSE_PROGRESS_FILE, records)
 }
 
 if (['migrate', 'seed', 'reset-demo'].includes(process.argv[2] ?? '')) {
