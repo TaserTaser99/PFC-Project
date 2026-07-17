@@ -21,10 +21,10 @@
         <h1>PFC Planner</h1>
         <p>Course search, social planning, and progression in one place.</p>
       </div>
-      <nav class="tabs" aria-label="Main tabs">
-        <button class="tab active" data-tab="search">Course Search</button>
-        <button class="tab" data-tab="heatmap">Planner Heatmap</button>
-        <button class="tab" data-tab="progression">Degree Progression</button>
+      <nav class="tabs" aria-label="Main tabs" role="tablist">
+        <button type="button" class="tab active" data-tab="search" role="tab" aria-selected="true">Course Search</button>
+        <button type="button" class="tab" data-tab="heatmap" role="tab" aria-selected="false">Planner Heatmap</button>
+        <button type="button" class="tab" data-tab="progression" role="tab" aria-selected="false">Degree Progression</button>
       </nav>
     </header>
 
@@ -48,7 +48,7 @@
             <h3>Recommended Courses for You</h3>
           </div>
           <div class="card">
-            <label for="recommend-user">Recommendation profile</label>
+            <label for="recommend-user">Viewing as (demo user)</label>
             <select id="recommend-user"></select>
           </div>
           <div id="recommendations" class="result-grid"></div>
@@ -79,7 +79,7 @@
           </div>
 
           <div class="card progression-controls">
-            <label for="progress-user">Student</label>
+            <label for="progress-user">Viewing as (demo user)</label>
             <select id="progress-user"></select>
           </div>
 
@@ -99,23 +99,43 @@
       </section>
 
       <aside class="sidebar" aria-label="Friends list sidebar">
+        <div id="service-error" class="error-banner hidden" role="alert"></div>
+
+        <p class="demo-note">Demo mode: changing the selected profile switches the active user.</p>
+
         <div class="panel-head compact">
-          <h3>Friends List</h3>
+          <h3>Friends</h3>
         </div>
 
         <div class="card add-friend-form">
-          <label for="friend-name">Add Friend</label>
-          <input id="friend-name" type="text" placeholder="Friend name" />
-          <button id="add-friend-btn" class="primary">Add Friend</button>
+          <label for="friend-search">Search students</label>
+          <input id="friend-search" type="text" placeholder="Search by name" />
+          <button type="button" id="friend-search-btn" class="primary">Search</button>
+          <small id="friend-search-meta"></small>
+        </div>
+
+        <div class="card friend-section">
+          <strong>Incoming requests</strong>
+          <div id="incoming-requests" aria-live="polite"></div>
+        </div>
+
+        <div class="card friend-section">
+          <strong>Outgoing requests</strong>
+          <div id="outgoing-requests" aria-live="polite"></div>
         </div>
 
         <div class="panel-head compact">
-          <h3>Your Friends</h3>
+          <h3>Your accepted friends</h3>
         </div>
-        <div id="friends-list" class="friends-list"></div>
+        <div id="friends-list" class="friends-list" aria-live="polite"></div>
 
         <div class="panel-head compact">
-          <h3>User Database</h3>
+          <h3>Search results</h3>
+        </div>
+        <div id="friend-search-results" class="user-search-results" aria-live="polite"></div>
+
+        <div class="panel-head compact">
+          <h3>User Directory</h3>
         </div>
         <div id="user-database" class="user-database"></div>
       </aside>

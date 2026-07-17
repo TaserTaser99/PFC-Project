@@ -319,3 +319,127 @@ small {
     padding-right: 0;
   }
 }
+
+.hidden {
+  display: none !important;
+}
+
+.demo-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px dashed #b9aa90;
+  border-radius: 12px;
+  color: var(--muted);
+  background: rgba(255, 250, 241, 0.72);
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.error-banner {
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border: 1px solid #d89a91;
+  border-radius: 12px;
+  background: #fff0ed;
+  color: #8a2f25;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.add-friend-form {
+  display: grid;
+  gap: 8px;
+}
+
+.add-friend-form label {
+  margin-bottom: 0;
+}
+
+.friend-section {
+  box-shadow: none;
+  background: rgba(255, 250, 241, 0.7);
+}
+
+.friend-section > strong {
+  display: block;
+  margin-bottom: 9px;
+}
+
+.friend-request-item,
+.user-search-results .user-item {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 10px;
+}
+
+.friend-request-item + .friend-request-item,
+.user-search-results .user-item + .user-item {
+  margin-top: 8px;
+}
+
+.friend-item,
+.friend-request-item,
+.user-item {
+  overflow-wrap: anywhere;
+}
+
+.friend-item button,
+.friend-request-item button,
+.user-item button {
+  margin-top: 9px;
+}
+
+.item-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.small-button,
+.secondary-button,
+.danger-button {
+  width: auto;
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+
+.secondary-button {
+  border: 1px solid #bdb5a7;
+  background: #fff;
+  color: var(--ink);
+}
+
+.danger-button {
+  border: 1px solid #d89a91;
+  background: #fff5f3;
+  color: #8a2f25;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--accent) 45%, white 55%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    padding: 14px;
+  }
+
+  .layout {
+    width: min(100% - 20px, 1280px);
+    margin-top: 12px;
+  }
+
+  .tab {
+    flex: 1 1 140px;
+  }
+}
