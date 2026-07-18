@@ -58,6 +58,9 @@ const state = {
   courseActionPending: false
 }
 
+let friendSearchTimer
+let friendSearchRequestId = 0
+
 const els = {
   tabs: document.querySelectorAll(".tab"),
   panels: {
@@ -313,6 +316,63 @@ function removeFriend(otherId) {
   })
 }
 
+async function searchStudents() {
+  const query = els.friendSearch.value.trim()
+  const requestId = ++friendSearchRequestId
+  state.serviceError = ''
+
+  if (query.length < 2) {
+    state.friendSearchResults = []
+    els.friendSearchMeta.textContent = query
+      ? 'Enter at least two characters.'
+      : 'Type a name to search.'
+    renderSidebar()
+    return
+  }
+
+  els.friendSearchMeta.textContent = 'Searching...'
+  renderSidebar()
+
+  try {
+    const response = await fetch(
+      `/api/users/search?q=${encodeURIComponent(query)}`,
+      { headers: authHeaders() }
+    )
+
+    if (requestId !== friendSearchRequestId) return
+
+    if (response.status === 401) {
+      clearStoredUserId()
+      redirectToLogin()
+      return
+    }
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(
+        payload?.message ||
+          friendlyError(payload?.error, 'Unable to search users.')
+      )
+    }
+
+    const results = await response.json()
+    if (requestId !== friendSearchRequestId) return
+
+    state.friendSearchResults = Array.isArray(results) ? results : []
+    els.friendSearchMeta.textContent =
+      `${state.friendSearchResults.length} result` +
+      `${state.friendSearchResults.length === 1 ? '' : 's'}`
+    renderSidebar()
+  } catch (error) {
+    if (requestId !== friendSearchRequestId) return
+
+    state.friendSearchResults = []
+    els.friendSearchMeta.textContent =
+      error instanceof Error ? error.message : 'Unable to search users.'
+    renderSidebar()
+  }
+}
+
 function bindEvents() {
   els.tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -321,44 +381,23 @@ function bindEvents() {
     })
   })
 
-  els.friendSearchBtn.addEventListener("click", async () => {
-    const query = els.friendSearch.value.trim()
-    state.serviceError = ''
+  els.friendSearchBtn.addEventListener("click", () => {
+    clearTimeout(friendSearchTimer)
+    void searchStudents()
+  })
 
-    if (query.length < 2) {
-      state.friendSearchResults = []
-      state.friendSearchMeta.textContent = 'Enter at least two characters.'
-      renderSidebar()
-      return
-    }
-
-    try {
-      state.friendSearchMeta.textContent = 'Searching...'
-      renderSidebar()
-
-      const resultsRes = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
-        headers: authHeaders()
-      })
-      if (!resultsRes.ok) {
-        const payload = await resultsRes.json().catch(() => null)
-        throw new Error(friendlyError(payload?.error, 'Unable to search users.'))
-      }
-
-      state.friendSearchResults = await resultsRes.json()
-      state.friendSearchMeta.textContent = `${state.friendSearchResults.length} result${state.friendSearchResults.length === 1 ? '' : 's'}`
-      renderSidebar()
-    } catch (error) {
-      state.friendSearchResults = []
-      state.friendSearchMeta.textContent =
-        error instanceof Error ? error.message : 'Unable to search users.'
-      renderSidebar()
-    }
+  els.friendSearch.addEventListener('input', () => {
+    clearTimeout(friendSearchTimer)
+    friendSearchTimer = setTimeout(() => {
+      void searchStudents()
+    }, 250)
   })
 
   els.friendSearch.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault()
-      els.friendSearchBtn.click()
+      clearTimeout(friendSearchTimer)
+      void searchStudents()
     }
   })
 
