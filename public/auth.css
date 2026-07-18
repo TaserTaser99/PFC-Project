@@ -1,0 +1,154 @@
+:root {
+  --bg: #f4f5ef;
+  --panel: #fffaf1;
+  --ink: #1f2520;
+  --muted: #5d665f;
+  --accent: #0e7c61;
+  --line: #d8d2c3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 15% 20%, #ffefcc 0%, var(--bg) 45%),
+    radial-gradient(circle at 85% 10%, #d8ffef 0%, transparent 35%),
+    var(--bg);
+  min-height: 100vh;
+}
+
+.auth-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: min(460px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(25, 34, 29, 0.08);
+}
+
+h1 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+}
+
+.auth-card p {
+  color: var(--muted);
+  margin: 6px 0 14px;
+}
+
+.auth-form {
+  display: grid;
+  gap: 10px;
+}
+
+label {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+input,
+button,
+select {
+  font: inherit;
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid #cbc4b5;
+  border-radius: 10px;
+  padding: 10px 11px;
+  background: #fff;
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid color-mix(in oklab, var(--accent) 40%, white 60%);
+  border-color: var(--accent);
+}
+
+.primary {
+  margin-top: 6px;
+  border: none;
+  background: linear-gradient(120deg, var(--accent), #16a47f);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.secondary {
+  border: 1px solid #bdb5a7;
+  background: #fff;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.auth-error {
+  border: 1px solid #f2b9b0;
+  background: #fff4f1;
+  color: #8a2f25;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.auth-footnote {
+  margin-top: 14px;
+}
+
+.hidden {
+  display: none;
+}
+
+.field-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.course-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.course-picker-list {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #cbc4b5;
+  border-radius: 10px;
+  padding: 8px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+}
+
+.course-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.course-option input {
+  width: auto;
+  margin-top: 3px;
+}

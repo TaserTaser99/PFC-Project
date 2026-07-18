@@ -1,22 +1,61 @@
-const plannedCoursesByUser = {
-  u1: { "1": ["c2", "c5"], "2": ["c1", "c3"], "3": ["c4", "c6"] },
-  u2: { "1": ["c2"], "2": ["c3"], "3": ["c6"] },
-  u3: { "1": ["c5"], "2": ["c1", "c3"], "3": ["c4"] },
-  u4: { "1": ["c2"], "2": ["c1"], "3": ["c4", "c6"] }
+const degreeRequirements = ["c2", "c5", "c1", "c3", "c4", "c6"]
+
+const SESSION_USER_KEY = 'pfcUserId'
+const MAX_PLANNED_COURSES_PER_TERM = 4
+
+function getStoredUserId() {
+  try {
+    return window.localStorage.getItem(SESSION_USER_KEY) ?? ''
+  } catch {
+    return ''
+  }
 }
 
-const degreeRequirements = ["c2", "c5", "c1", "c3", "c4", "c6"]
+function setStoredUserId(userId) {
+  try {
+    window.localStorage.setItem(SESSION_USER_KEY, userId)
+  } catch {
+    // Ignore storage quota/private mode failures in local prototype mode.
+  }
+}
+
+function clearStoredUserId() {
+  try {
+    window.localStorage.removeItem(SESSION_USER_KEY)
+  } catch {
+    // Ignore storage quota/private mode failures in local prototype mode.
+  }
+}
+
+function getUserDegreeRequirements(user) {
+  if (user?.degreeCourseIds?.length) {
+    return user.degreeCourseIds
+  }
+  return degreeRequirements
+}
+
+function getUserDegreeLabel(user) {
+  return user?.degree?.trim() || 'Degree'
+}
+
+function redirectToLogin() {
+  window.location.href = '/login.html'
+}
 
 const state = {
   courses: [],
   users: [],
-  currentUserId: "u1",
+  degreePlans: [],
+  currentUserId: getStoredUserId(),
   selectedTerm: "1",
   activeTab: "search",
   friendSearchResults: [],
   friendData: { friends: [], incoming: [], outgoing: [], friendIds: [] },
   serviceError: "",
-  friendActionPending: false
+  friendActionPending: false,
+  heatmapRequestId: 0,
+  heatmapPlannedCourseIds: [],
+  courseActionPending: false
 }
 
 const els = {
@@ -34,15 +73,15 @@ const els = {
   incomingRequests: document.getElementById("incoming-requests"),
   outgoingRequests: document.getElementById("outgoing-requests"),
   friendsList: document.getElementById("friends-list"),
-  userDatabase: document.getElementById("user-database"),
   courseSearch: document.getElementById("course-search"),
   searchMeta: document.getElementById("search-meta"),
   searchResults: document.getElementById("search-results"),
   recommendUser: document.getElementById("recommend-user"),
   recommendations: document.getElementById("recommendations"),
+  topbarDegreeSelect: document.getElementById("topbar-degree-select"),
+  logoutBtn: document.getElementById('logout-btn'),
   termSelect: document.getElementById("term-select"),
   heatmapGrid: document.getElementById("heatmap-grid"),
-  progressUser: document.getElementById("progress-user"),
   progressText: document.getElementById("progress-text"),
   progressCount: document.getElementById("progress-count"),
   progressFill: document.getElementById("progress-fill"),
@@ -53,14 +92,22 @@ const els = {
 init()
 
 async function init() {
+  if (!state.currentUserId) {
+    redirectToLogin()
+    return
+  }
+
   const data = await loadData()
   state.courses = data.courses
   state.users = data.users
+  state.degreePlans = data.degreePlans ?? []
   state.friendData = data.friendData ?? { friends: [], incoming: [], outgoing: [], friendIds: [] }
   state.serviceError = data.error || ''
 
-  if (!state.users.find((u) => u.id === state.currentUserId) && state.users.length > 0) {
-    state.currentUserId = state.users[0].id
+  if (!state.users.find((u) => u.id === state.currentUserId)) {
+    clearStoredUserId()
+    redirectToLogin()
+    return
   }
 
   bindEvents()
@@ -72,31 +119,58 @@ async function loadData() {
   const emptyFriendData = { friends: [], incoming: [], outgoing: [], friendIds: [] }
 
   try {
-    const [coursesRes, usersRes] = await Promise.all([
-      fetch('/api/courses'),
-      fetch('/api/users')
+    const [meRes, coursesRes, degreePlansRes] = await Promise.all([
+      fetch('/api/me', { headers: authHeaders() }),
+      fetch('/api/me/courses', { headers: authHeaders() }),
+      fetch('/api/degree-plans')
     ])
-    if (!coursesRes.ok || !usersRes.ok) throw new Error('Unable to load courses or users.')
 
-    const [courses, users] = await Promise.all([coursesRes.json(), usersRes.json()])
-    if (!users.some((user) => user.id === state.currentUserId)) {
-      state.currentUserId = users[0]?.id ?? ''
+    if (meRes.status === 401 || meRes.status === 403) {
+      clearStoredUserId()
+      redirectToLogin()
+      return {
+        courses: [],
+        users: [],
+        degreePlans: [],
+        friendData: emptyFriendData,
+        error: ''
+      }
     }
 
+    if (!meRes.ok || !coursesRes.ok || !degreePlansRes.ok) {
+      throw new Error('Unable to load profile, courses, or degree plans.')
+    }
+
+    const [me, courses, degreePlans] = await Promise.all([
+      meRes.json(),
+      coursesRes.json(),
+      degreePlansRes.json()
+    ])
+
     if (!state.currentUserId) {
-      return { courses, users, friendData: emptyFriendData, error: 'No users are available. Run npm run seed.' }
+      return { courses, users: [], degreePlans, friendData: emptyFriendData, error: 'No user session found.' }
     }
 
     try {
-      const friendsRes = await fetch('/api/friends', {
-        headers: authHeaders()
-      })
-      if (!friendsRes.ok) throw new Error('Friend service unavailable. Check that DEV_AUTH=true.')
-      return { courses, users, friendData: await friendsRes.json() }
+      const friendsRes = await fetch('/api/friends', { headers: authHeaders() })
+      if (!friendsRes.ok) {
+        throw new Error('Friend service unavailable. Please log in again.')
+      }
+
+      const friendData = await friendsRes.json()
+
+      return {
+        courses,
+        users: buildKnownUsers(me, friendData),
+        degreePlans,
+        friendData,
+        error: ''
+      }
     } catch (error) {
       return {
         courses,
-        users,
+        users: [me],
+        degreePlans,
         friendData: emptyFriendData,
         error: error instanceof Error ? error.message : String(error)
       }
@@ -105,10 +179,25 @@ async function loadData() {
     return {
       courses: [],
       users: [],
+      degreePlans: [],
       friendData: emptyFriendData,
       error: error instanceof Error ? error.message : String(error)
     }
   }
+}
+
+function buildKnownUsers(me, friendData) {
+  const byId = new Map()
+
+  if (me?.id) {
+    byId.set(me.id, me)
+  }
+
+  for (const friend of friendData.friends ?? []) {
+    byId.set(friend.id, { ...byId.get(friend.id), ...friend })
+  }
+
+  return [...byId.values()]
 }
 
 function authHeaders(extraHeaders = {}) {
@@ -128,6 +217,10 @@ async function refreshFriendData() {
       throw new Error(friendlyError(payload?.error, 'Failed to load friend data.'))
     }
     state.friendData = await res.json()
+    const me = state.users.find((user) => user.id === state.currentUserId)
+    if (me) {
+      state.users = buildKnownUsers(me, state.friendData)
+    }
     state.serviceError = ''
   } catch (error) {
     state.friendData = { friends: [], incoming: [], outgoing: [], friendIds: [] }
@@ -151,6 +244,35 @@ async function performFriendAction(url, options = {}) {
     state.serviceError = error instanceof Error ? error.message : String(error)
   } finally {
     state.friendActionPending = false
+    renderAll()
+  }
+}
+
+async function applyDegreePlanSelection(degreePlanId) {
+  const planId = degreePlanId.trim()
+  if (!planId || !state.currentUserId) {
+    return
+  }
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(state.currentUserId)}/degree`, {
+      method: 'PATCH',
+      headers: authHeaders({ 'content-type': 'application/json' }),
+      body: JSON.stringify({ degreePlanId: planId })
+    })
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(friendlyError(payload?.error, 'Unable to update degree.'))
+    }
+
+    const updatedUser = await response.json()
+    state.users = state.users.map((user) =>
+      user.id === updatedUser.id ? { ...user, ...updatedUser } : user
+    )
+    state.serviceError = ''
+  } catch (error) {
+    state.serviceError = error instanceof Error ? error.message : 'Unable to update degree.'
+  } finally {
     renderAll()
   }
 }
@@ -201,6 +323,8 @@ function bindEvents() {
 
   els.friendSearchBtn.addEventListener("click", async () => {
     const query = els.friendSearch.value.trim()
+    state.serviceError = ''
+
     if (query.length < 2) {
       state.friendSearchResults = []
       state.friendSearchMeta.textContent = 'Enter at least two characters.'
@@ -209,15 +333,24 @@ function bindEvents() {
     }
 
     try {
-      const resultsRes = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`)
-      if (!resultsRes.ok) throw new Error('Search request failed')
+      state.friendSearchMeta.textContent = 'Searching...'
+      renderSidebar()
+
+      const resultsRes = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
+        headers: authHeaders()
+      })
+      if (!resultsRes.ok) {
+        const payload = await resultsRes.json().catch(() => null)
+        throw new Error(friendlyError(payload?.error, 'Unable to search users.'))
+      }
+
       state.friendSearchResults = await resultsRes.json()
-      state.serviceError = ''
       state.friendSearchMeta.textContent = `${state.friendSearchResults.length} result${state.friendSearchResults.length === 1 ? '' : 's'}`
       renderSidebar()
-    } catch (err) {
-      console.error(err)
-      state.serviceError = 'Unable to search users. Please try again.'
+    } catch (error) {
+      state.friendSearchResults = []
+      state.friendSearchMeta.textContent =
+        error instanceof Error ? error.message : 'Unable to search users.'
       renderSidebar()
     }
   })
@@ -250,10 +383,15 @@ function bindEvents() {
   els.friendsList.addEventListener('click', handleFriendAction)
 
   els.courseSearch.addEventListener("input", renderSearch)
+  els.searchResults.addEventListener('click', handleCourseCardClick)
+  els.heatmapGrid.addEventListener('click', handleHeatmapCellClick)
 
   els.recommendUser.addEventListener("change", async () => {
     state.currentUserId = els.recommendUser.value
-    els.progressUser.value = state.currentUserId
+    setStoredUserId(state.currentUserId)
+    if (els.topbarDegreeSelect) {
+      els.topbarDegreeSelect.value = getCurrentUserDegreePlanId()
+    }
     state.friendSearchResults = []
     await refreshFriendData()
     renderAll()
@@ -261,15 +399,16 @@ function bindEvents() {
 
   els.termSelect.addEventListener("change", () => {
     state.selectedTerm = els.termSelect.value
-    renderHeatmap()
+    void renderHeatmap()
   })
 
-  els.progressUser.addEventListener("change", async () => {
-    state.currentUserId = els.progressUser.value
-    els.recommendUser.value = state.currentUserId
-    state.friendSearchResults = []
-    await refreshFriendData()
-    renderAll()
+  els.topbarDegreeSelect?.addEventListener('change', async () => {
+    await applyDegreePlanSelection(els.topbarDegreeSelect.value)
+  })
+
+  els.logoutBtn.addEventListener('click', () => {
+    clearStoredUserId()
+    redirectToLogin()
   })
 }
 
@@ -279,16 +418,38 @@ function populateUserSelects() {
     .join("")
 
   els.recommendUser.innerHTML = options
-  els.progressUser.innerHTML = options
   els.recommendUser.value = state.currentUserId
-  els.progressUser.value = state.currentUserId
+}
+
+function getCurrentUserDegreePlanId() {
+  const me = getCurrentUser()
+  if (!me) return ''
+  return (
+    state.degreePlans.find(
+      (plan) => plan.label === me.degree || plan.id === me.degree
+    )?.id ?? ''
+  )
+}
+
+function populateDegreePlanSelect() {
+  if (!els.topbarDegreeSelect) return
+
+  const options = [
+    '<option value="">Choose degree</option>',
+    ...state.degreePlans.map(
+      (plan) => `<option value="${escapeHTML(plan.id)}">${escapeHTML(plan.label)}</option>`
+    )
+  ]
+  els.topbarDegreeSelect.innerHTML = options.join('')
+  els.topbarDegreeSelect.value = getCurrentUserDegreePlanId()
 }
 
 function renderAll() {
+  populateDegreePlanSelect()
   renderTabs()
   renderSidebar()
   renderSearch()
-  renderHeatmap()
+  void renderHeatmap()
   renderProgression()
 }
 
@@ -322,7 +483,6 @@ function renderSidebar() {
           (f) => `
             <div class="friend-item">
               <strong>${escapeHTML(f.name)}</strong>
-              <div class="course-meta">Workload target: ${f.preferredWorkload} hrs/wk</div>
               <button class="danger-button" data-action="remove-friend" data-id="${escapeHTML(f.id)}" ${state.friendActionPending ? "disabled" : ""}>Remove</button>
             </div>
           `
@@ -333,10 +493,9 @@ function renderSidebar() {
   els.incomingRequests.innerHTML = incoming.length
     ? incoming
         .map((req) => {
-          const sender = state.users.find((u) => u.id === req.senderId)
           return `
             <div class="friend-request-item">
-              <strong>${escapeHTML(sender?.name || req.senderId)}</strong>
+              <strong>${escapeHTML(req.senderName || req.senderId)}</strong>
               <div class="course-meta">Incoming request</div>
               <div class="item-actions">
                 <button class="primary small-button" data-action="accept-request" data-id="${escapeHTML(req.id)}" ${state.friendActionPending ? "disabled" : ""}>Accept</button>
@@ -351,10 +510,9 @@ function renderSidebar() {
   els.outgoingRequests.innerHTML = outgoing.length
     ? outgoing
         .map((req) => {
-          const recipient = state.users.find((u) => u.id === req.recipientId)
           return `
             <div class="friend-request-item">
-              <strong>${escapeHTML(recipient?.name || req.recipientId)}</strong>
+              <strong>${escapeHTML(req.recipientName || req.recipientId)}</strong>
               <div class="course-meta">Pending request</div>
               <button class="secondary-button small-button" data-action="cancel-request" data-id="${escapeHTML(req.id)}" ${state.friendActionPending ? "disabled" : ""}>Cancel</button>
             </div>
@@ -393,17 +551,6 @@ function renderSidebar() {
         })
         .join("")
     : `<div class="friend-item">Search existing students to add as friends.</div>`
-
-  els.userDatabase.innerHTML = state.users.length
-    ? state.users.map(
-      (u) => `
-        <div class="user-item">
-          <strong>${escapeHTML(u.name)}</strong>
-        </div>
-      `
-    )
-    .join("")
-    : `<div class="friend-item">No users available.</div>`
 }
 
 function renderSearch() {
@@ -420,10 +567,12 @@ function renderSearch() {
   els.searchResults.innerHTML = results.length
     ? results.map((course) => {
       const friendsDoing = getFriendsDoingCourse(course.id)
+      const isCompleted = Boolean(course.completed)
       return `
-        <article class="course-card">
+        <article class="course-card clickable ${isCompleted ? 'completed' : ''}" data-course-id="${escapeHTML(course.id)}" role="button" tabindex="0" aria-pressed="${isCompleted}">
           <h4>${escapeHTML(course.code)} - ${escapeHTML(course.title)}</h4>
-          <div class="course-meta">Term ${course.term} | Workload ${course.workload}/10 | Popularity ${course.popularity}</div>
+          <div class="course-meta">Terms ${course.terms.join(', ')} | Workload ${course.workload}/10 | Popularity ${course.popularity}</div>
+          <div class="course-meta">${isCompleted ? 'Completed — click to unmark' : 'Click to mark as completed'}</div>
           <div class="course-meta">Friends taking this: ${friendsDoing.length}</div>
           <div class="friend-pills">
             ${
@@ -470,33 +619,65 @@ function recommendCourses(userId) {
     .slice(0, 4)
 }
 
-function renderHeatmap() {
+async function renderHeatmap() {
+  if (!state.currentUserId) {
+    els.heatmapGrid.innerHTML = `<div class="course-card">No user selected for heatmap.</div>`
+    return
+  }
+
+  const requestId = ++state.heatmapRequestId
   const term = state.selectedTerm
-  const coursesInTerm = state.courses.filter((c) => c.term === term)
 
-  const counts = coursesInTerm.map((c) => {
-    const count = getFriendsDoingCourse(c.id).length
-    return { course: c, count }
-  })
+  els.heatmapGrid.innerHTML = `<div class="course-card">Loading heatmap...</div>`
 
-  const max = Math.max(...counts.map((c) => c.count), 1)
+  try {
+    const response = await fetch(
+      `/api/me/heatmap?term=${encodeURIComponent(term)}`,
+      { headers: authHeaders() }
+    )
 
-  els.heatmapGrid.innerHTML = counts.length
-    ? counts.map(({ course, count }) => {
-      const intensity = 0.2 + count / max
-      const color = `rgba(14, 124, 97, ${Math.min(0.95, intensity).toFixed(2)})`
-      return `
-        <div class="heat-cell" style="background:${color}">
-          <div>
-            <strong>${escapeHTML(course.code)}</strong>
-            <div>${escapeHTML(course.title)}</div>
-          </div>
-          <div>${count} friend${count === 1 ? "" : "s"}</div>
-        </div>
-      `
-    })
-    .join("")
-    : `<div class="course-card">No courses are available for this term.</div>`
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(friendlyError(payload?.error, 'Failed to load heatmap data.'))
+    }
+
+    const payload = await response.json()
+    if (requestId !== state.heatmapRequestId) {
+      return
+    }
+
+    const rows = Array.isArray(payload.courses) ? payload.courses : []
+    const plannedCourseIds = new Set(payload.plannedCourseIds ?? [])
+    state.heatmapPlannedCourseIds = [...plannedCourseIds]
+
+    els.heatmapGrid.innerHTML = rows.length
+      ? rows
+          .map((row) => {
+            const course = row.course ?? {}
+            const friendCount = Number(row.friendCount ?? 0)
+            const importance = Number(row.importanceScore ?? 0)
+            const isPlanned = plannedCourseIds.has(course.id)
+            const color = isPlanned ? 'hsl(210 75% 42%)' : String(row.color ?? 'hsl(120 75% 42%)')
+            return `
+              <div class="heat-cell ${isPlanned ? 'planned-by-me' : ''}" data-course-id="${escapeHTML(course.id)}" style="background:${color}" role="button" tabindex="0" aria-pressed="${isPlanned}">
+                <div>
+                  <strong>${escapeHTML(course.code)}</strong>
+                  <div>${escapeHTML(course.title)}</div>
+                  <div class="course-meta">${isPlanned ? 'In your plan' : 'Click to add to plan'} · Importance ${importance.toFixed(1)}</div>
+                </div>
+                <div>${friendCount} friend${friendCount === 1 ? "" : "s"}</div>
+              </div>
+            `
+          })
+          .join("")
+      : `<div class="course-card">No courses are available for this term.</div>`
+  } catch (error) {
+    if (requestId !== state.heatmapRequestId) {
+      return
+    }
+    const message = error instanceof Error ? error.message : 'Failed to load heatmap data.'
+    els.heatmapGrid.innerHTML = `<div class="course-card">${escapeHTML(message)}</div>`
+  }
 }
 
 function renderProgression() {
@@ -510,15 +691,16 @@ function renderProgression() {
     return
   }
   const completed = new Set(me.completedCourseIds ?? [])
-  const done = degreeRequirements.filter((id) => completed.has(id)).length
-  const total = degreeRequirements.length
+  const requirements = getUserDegreeRequirements(me)
+  const done = requirements.filter((id) => completed.has(id)).length
+  const total = requirements.length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
-  els.progressText.textContent = `${me.name}'s Degree Progress`
+  els.progressText.textContent = `${getUserDegreeLabel(me)} Progress`
   els.progressCount.textContent = `${done}/${total} complete`
   els.progressFill.style.width = `${pct}%`
 
-  els.degreeGrid.innerHTML = degreeRequirements
+  els.degreeGrid.innerHTML = requirements
     .map((reqId) => {
       const course = state.courses.find((c) => c.id === reqId)
       if (!course) {
@@ -534,7 +716,7 @@ function renderProgression() {
     })
     .join("")
 
-  const plan = plannedCoursesByUser[me.id] ?? { "1": [], "2": [], "3": [] }
+  const plan = me.plannedCourses ?? { "1": [], "2": [], "3": [] }
   els.planTimeline.innerHTML = ["1", "2", "3"]
     .map((term) => {
       const labels = (plan[term] ?? [])
@@ -555,17 +737,135 @@ function renderProgression() {
 function getFriendsDoingCourse(courseId) {
   const me = getCurrentUser()
   if (!me) return []
-  const friendUsers = state.users.filter((u) => (me.friendIds ?? []).includes(u.id))
+  const friendUsers = state.friendData.friends ?? []
 
   return friendUsers
     .filter((friend) => {
       const hasCompleted = (friend.completedCourseIds ?? []).includes(courseId)
-      const hasPlanned = Object.values(plannedCoursesByUser[friend.id] ?? {}).some((courses) =>
+      const hasPlanned = Object.values(friend.plannedCourses ?? {}).some((courses) =>
         courses.includes(courseId)
       )
       return hasCompleted || hasPlanned
     })
     .map((friend) => friend.name)
+}
+
+async function handleCourseCardClick(event) {
+  const card = event.target.closest('[data-course-id]')
+  if (!card || state.courseActionPending) return
+
+  const courseId = card.dataset.courseId
+  if (!courseId) return
+
+  const course = state.courses.find((candidate) => candidate.id === courseId)
+  if (!course) return
+
+  const nextCompleted = !course.completed
+  state.courseActionPending = true
+  renderSearch()
+
+  try {
+    const response = await fetch(
+      `/api/me/completed-courses/${encodeURIComponent(courseId)}`,
+      {
+        method: 'PATCH',
+        headers: authHeaders({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ completed: nextCompleted })
+      }
+    )
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(friendlyError(payload?.error, 'Unable to update completed course.'))
+    }
+
+    const payload = await response.json()
+    updateCurrentUserCourseState(payload)
+    state.courses = state.courses.map((candidate) =>
+      candidate.id === courseId
+        ? { ...candidate, completed: nextCompleted }
+        : candidate
+    )
+    state.serviceError = ''
+  } catch (error) {
+    state.serviceError = error instanceof Error ? error.message : 'Unable to update completed course.'
+  } finally {
+    state.courseActionPending = false
+    renderAll()
+  }
+}
+
+async function handleHeatmapCellClick(event) {
+  const cell = event.target.closest('[data-course-id]')
+  if (!cell || state.courseActionPending) return
+
+  const courseId = cell.dataset.courseId
+  if (!courseId) return
+
+  const term = state.selectedTerm
+  const isPlanned = state.heatmapPlannedCourseIds.includes(courseId)
+  const nextPlanned = !isPlanned
+
+  if (nextPlanned && state.heatmapPlannedCourseIds.length >= MAX_PLANNED_COURSES_PER_TERM) {
+    state.serviceError = 'You can plan up to 4 courses per term.'
+    renderSidebar()
+    return
+  }
+
+  state.courseActionPending = true
+  void renderHeatmap()
+
+  try {
+    const response = await fetch(
+      `/api/me/planned-courses/${encodeURIComponent(term)}/${encodeURIComponent(courseId)}`,
+      {
+        method: 'PATCH',
+        headers: authHeaders({ 'content-type': 'application/json' }),
+        body: JSON.stringify({ planned: nextPlanned })
+      }
+    )
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null)
+      throw new Error(friendlyError(payload?.error, 'Unable to update planned course.'))
+    }
+
+    const payload = await response.json()
+    updateCurrentUserPlannedCourses(term, payload.plannedCourseIds ?? [])
+    state.serviceError = ''
+  } catch (error) {
+    state.serviceError = error instanceof Error ? error.message : 'Unable to update planned course.'
+  } finally {
+    state.courseActionPending = false
+    renderAll()
+  }
+}
+
+function updateCurrentUserCourseState(payload) {
+  state.users = state.users.map((user) =>
+    user.id === state.currentUserId
+      ? {
+          ...user,
+          completedCourseIds: payload.completedCourseIds ?? user.completedCourseIds ?? [],
+          plannedCourses: payload.plannedCourses ?? user.plannedCourses ?? {}
+        }
+      : user
+  )
+}
+
+function updateCurrentUserPlannedCourses(term, plannedCourseIds) {
+  state.heatmapPlannedCourseIds = plannedCourseIds
+  state.users = state.users.map((user) =>
+    user.id === state.currentUserId
+      ? {
+          ...user,
+          plannedCourses: {
+            ...(user.plannedCourses ?? {}),
+            [term]: plannedCourseIds
+          }
+        }
+      : user
+  )
 }
 
 function getCurrentUser() {
@@ -577,6 +877,9 @@ function friendlyError(code, fallback) {
   const messages = {
     already_friends: 'You are already friends.',
     cannot_friend_self: 'You cannot send a friend request to yourself.',
+    invalid_user: 'Please select a valid user before loading the heatmap.',
+    plan_limit_exceeded: 'You can plan up to 4 courses per term.',
+    course_not_offered_in_term: 'That course is not offered in the selected term.',
     invalid_state: 'That request has already been handled.',
     not_authorised: 'You are not allowed to perform that action.',
     not_friends: 'That friendship no longer exists.',

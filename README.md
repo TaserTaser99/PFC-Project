@@ -12,11 +12,12 @@ A Peter Farrell Cup prototype for social course planning. Students can search ex
 ```powershell
 npm ci
 npm run reset:demo
-$env:DEV_AUTH = "true"
 npm run dev
 ```
 
 Open `http://localhost:3002`.
+
+Sign up at `http://localhost:3002/signup.html` or log in at `http://localhost:3002/login.html`.
 
 The user dropdowns act as a development-only identity switch so the full friend-request flow can be demonstrated between the seeded users.
 
@@ -37,8 +38,8 @@ npm start         Run the compiled server
 The current implementation is a controlled development prototype:
 
 - Data is stored in local JSON files under `db/`.
-- Friend routes use an `X-User-Id` header while `DEV_AUTH=true`.
-- Development authentication is disabled when `NODE_ENV=production`.
+- Login credentials are stored as salted password hashes in `db/credentials.json`.
+- Friend routes use an `X-User-Id` header from the currently logged-in prototype user.
 - Course information and plans are demonstration data, not an official UNSW dataset.
 - The user directory exposes prototype profile fields to the local interface.
 

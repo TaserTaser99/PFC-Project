@@ -29,18 +29,29 @@ export async function getFriendDataFor(userId: string) {
     (request) => request.senderId === userId && request.status === 'pending'
   )
 
-  const publicUsers = users.map(({ id, name, preferredWorkload, completedCourseIds }) => ({
-    id,
-    name,
-    preferredWorkload,
-    completedCourseIds
-  }))
+  const publicUsers = users.map(
+    ({ id, name, preferredWorkload, completedCourseIds, plannedCourses }) => ({
+      id,
+      name,
+      preferredWorkload,
+      completedCourseIds,
+      plannedCourses: plannedCourses ?? { '1': [], '2': [], '3': [] }
+    })
+  )
 
   return {
     friends: publicUsers.filter((user) => friendIds.includes(user.id)),
-    incoming,
-    outgoing,
-    users: publicUsers,
+    incoming: incoming.map((request) => ({
+      ...request,
+      senderName:
+        users.find((user) => user.id === request.senderId)?.name ?? request.senderId
+    })),
+    outgoing: outgoing.map((request) => ({
+      ...request,
+      recipientName:
+        users.find((user) => user.id === request.recipientId)?.name ??
+        request.recipientId
+    })),
     currentUserId: userId,
     friendIds
   }
