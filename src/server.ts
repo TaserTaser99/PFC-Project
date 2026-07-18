@@ -44,6 +44,8 @@ export async function start() {
   })
 }
 
+export default app
+
 // Only auto-start when this file is the main module (node src/server.ts)
 if (process.argv[1] === filename) {
   void start().catch((error) => {
