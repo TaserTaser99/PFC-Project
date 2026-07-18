@@ -19,6 +19,16 @@ const CREDENTIALS_FILE = path.join(DATA_DIR, 'credentials.json')
 
 let mutationQueue: Promise<void> = Promise.resolve()
 
+async function enqueueMutation<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = mutationQueue
+  const resultP = (async () => {
+    await previous
+    return fn()
+  })()
+  mutationQueue = resultP.then(() => {}).catch(() => {})
+  return resultP
+}
+
 function createDemoData() {
   const now = new Date().toISOString()
   const degreePlanById = new Map(degreePlans.map((plan) => [plan.id, plan]))
@@ -135,25 +145,26 @@ async function readJsonArray<T>(file: string): Promise<T[]> {
 }
 
 async function writeJsonAtomic<T>(file: string, data: T[]) {
-  await ensureDir()
-  const temporaryFile = `${file}.${process.pid}.${randomUUID()}.tmp`
-  await fs.writeFile(temporaryFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8')
-  await fs.rename(temporaryFile, file)
+  return enqueueMutation(async () => {
+    await ensureDir()
+    const temporaryFile = `${file}.${process.pid}.${randomUUID()}.tmp`
+    await fs.writeFile(temporaryFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8')
+    try {
+      await fs.rename(temporaryFile, file)
+    } catch (err) {
+      try {
+        await fs.unlink(file).catch(() => {})
+        await fs.rename(temporaryFile, file)
+      } catch (err2) {
+        await fs.unlink(temporaryFile).catch(() => {})
+        throw err2
+      }
+    }
+  })
 }
 
 export async function withDbMutation<T>(operation: () => Promise<T>): Promise<T> {
-  const previous = mutationQueue
-  let release!: () => void
-  mutationQueue = new Promise<void>((resolve) => {
-    release = resolve
-  })
-
-  await previous
-  try {
-    return await operation()
-  } finally {
-    release()
-  }
+  return enqueueMutation(operation)
 }
 
 export async function migrate() {
