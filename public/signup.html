@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PFC Planner | Sign Up</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/auth.css" />
+  </head>
+  <body data-auth-mode="signup">
+    <main class="auth-layout">
+      <section class="auth-card">
+        <h1>Create Your Account</h1>
+        <p>Sign up to start planning with friends.</p>
+
+        <div id="auth-error" class="auth-error hidden" role="alert"></div>
+
+        <form id="signup-form" class="auth-form">
+          <label for="signup-name">Full name</label>
+          <input id="signup-name" type="text" autocomplete="name" minlength="2" required />
+
+          <label for="signup-email">Email</label>
+          <input id="signup-email" type="email" autocomplete="email" required />
+
+          <label for="signup-degree-plan">Degree requirements template</label>
+          <select id="signup-degree-plan" required>
+            <option value="">Choose your degree</option>
+          </select>
+
+          <label for="signup-password">Password</label>
+          <input id="signup-password" type="password" autocomplete="new-password" minlength="8" required />
+
+          <label for="signup-password-confirm">Confirm password</label>
+          <input id="signup-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
+
+          <button id="signup-submit" class="primary" type="submit">Sign up</button>
+        </form>
+
+        <p class="auth-footnote">
+          Already have an account?
+          <a href="/login.html">Log in</a>
+        </p>
+      </section>
+    </main>
+
+    <script type="module" src="/auth.js"></script>
+  </body>
+</html>

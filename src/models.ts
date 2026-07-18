@@ -1,11 +1,15 @@
-export type Course = {
+export type Term = '1' | '2' | '3'
+
+export interface Course {
   id: string
   code: string
   title: string
   workload: number
   popularity: number
-  term: string
+  terms: Term[]
 }
+
+export type PlannedCourses = Partial<Record<Term, string[]>>
 
 export type User = {
   id: string
@@ -13,11 +17,22 @@ export type User = {
   friendIds: string[]
   preferredWorkload: number
   completedCourseIds: string[]
+  degree: string
+  plannedCourses: PlannedCourses
 }
 
 export type UserProfile = Omit<User, 'friendIds'> & {
-  createdAt: string
+  degreeCourseIds: string[]
+  createdAt?: string
   programCode?: string
+}
+
+export type AuthCredential = {
+  id: string
+  userId: string
+  email: string
+  passwordHash: string
+  createdAt: string
 }
 
 export type FriendRequest = {
@@ -45,6 +60,18 @@ export type RecommendationRequest = {
 export type SharedRecommendationRequest = {
   userIds: string[]
   threshold: number
+}
+
+export type SignupRequest = {
+  name: string
+  email: string
+  password: string
+  degree: string
+}
+
+export type LoginRequest = {
+  email: string
+  password: string
 }
 
 export type CourseRecommendation = {

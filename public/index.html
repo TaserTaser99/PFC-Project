@@ -21,6 +21,10 @@
         <h1>PFC Planner</h1>
         <p>Course search, social planning, and progression in one place.</p>
       </div>
+      <div class="topbar-actions">
+        <select id="topbar-degree-select" class="topbar-degree-select" aria-label="Your degree"></select>
+        <button type="button" id="logout-btn" class="secondary-button">Log out</button>
+      </div>
       <nav class="tabs" aria-label="Main tabs" role="tablist">
         <button type="button" class="tab active" data-tab="search" role="tab" aria-selected="true">Course Search</button>
         <button type="button" class="tab" data-tab="heatmap" role="tab" aria-selected="false">Planner Heatmap</button>
@@ -29,11 +33,27 @@
     </header>
 
     <main class="layout">
+      <aside class="sidebar requests-sidebar" aria-label="Friend requests sidebar">
+        <div class="panel-head compact">
+          <h3>Incoming requests</h3>
+        </div>
+        <div class="card friend-section">
+          <div id="incoming-requests" aria-live="polite"></div>
+        </div>
+
+        <div class="panel-head compact">
+          <h3>Outgoing requests</h3>
+        </div>
+        <div class="card friend-section">
+          <div id="outgoing-requests" aria-live="polite"></div>
+        </div>
+      </aside>
+
       <section class="content-column">
         <section id="tab-search" class="tab-panel active" aria-label="Course search panel">
           <div class="panel-head">
             <h2>Course Search + Recommender</h2>
-            <p>Search by code or course name and see which friends are taking each course.</p>
+            <p>Search by code or course name. Click a course to mark it completed.</p>
           </div>
 
           <div class="search-row card">
@@ -57,16 +77,19 @@
         <section id="tab-heatmap" class="tab-panel" aria-label="Heatmap panel">
           <div class="panel-head">
             <h2>Course Planner Heatmap</h2>
-            <p>Select a term to see how many friends are planning each course.</p>
+            <p>Select a term and click courses to plan up to 4 per term. Your selections appear in blue.</p>
           </div>
 
           <div class="card heatmap-controls">
-            <label for="term-select">Term</label>
-            <select id="term-select">
-              <option value="1">Term 1</option>
-              <option value="2">Term 2</option>
-              <option value="3">Term 3</option>
-            </select>
+            <div>
+              <label for="term-select">Term</label>
+              <select id="term-select">
+                <option value="1">Term 1</option>
+                <option value="2">Term 2</option>
+                <option value="3">Term 3</option>
+              </select>
+            </div>
+
           </div>
 
           <div id="heatmap-grid" class="heatmap-grid"></div>
@@ -76,11 +99,6 @@
           <div class="panel-head">
             <h2>Degree Progression</h2>
             <p>A MyPlan-style checklist and term flow for required courses.</p>
-          </div>
-
-          <div class="card progression-controls">
-            <label for="progress-user">Viewing as (demo user)</label>
-            <select id="progress-user"></select>
           </div>
 
           <div class="progress-wrap card">
@@ -114,30 +132,15 @@
           <small id="friend-search-meta"></small>
         </div>
 
-        <div class="card friend-section">
-          <strong>Incoming requests</strong>
-          <div id="incoming-requests" aria-live="polite"></div>
-        </div>
-
-        <div class="card friend-section">
-          <strong>Outgoing requests</strong>
-          <div id="outgoing-requests" aria-live="polite"></div>
-        </div>
-
-        <div class="panel-head compact">
-          <h3>Your accepted friends</h3>
-        </div>
-        <div id="friends-list" class="friends-list" aria-live="polite"></div>
-
         <div class="panel-head compact">
           <h3>Search results</h3>
         </div>
         <div id="friend-search-results" class="user-search-results" aria-live="polite"></div>
 
         <div class="panel-head compact">
-          <h3>User Directory</h3>
+          <h3>Your accepted friends</h3>
         </div>
-        <div id="user-database" class="user-database"></div>
+        <div id="friends-list" class="friends-list" aria-live="polite"></div>
       </aside>
     </main>
 

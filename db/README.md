@@ -5,6 +5,7 @@ The current development prototype stores data in three JSON files created at run
 - `users.json`
 - `friend_requests.json`
 - `friendships.json`
+- `credentials.json`
 
 Run `npm run reset:demo` to create or restore demonstration users, one accepted friendship, and one pending request. The JSON files are ignored by Git.
 

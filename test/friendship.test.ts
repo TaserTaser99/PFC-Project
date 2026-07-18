@@ -26,9 +26,9 @@ afterEach(async () => {
 async function setupUsers() {
   await db.migrate()
   await db.writeUsers([
-    { id: 'u1', name: 'Alice', preferredWorkload: 18, completedCourseIds: [], createdAt: new Date().toISOString() },
-    { id: 'u2', name: 'Bob', preferredWorkload: 16, completedCourseIds: [], createdAt: new Date().toISOString() },
-    { id: 'u3', name: 'Charlie', preferredWorkload: 15, completedCourseIds: [], createdAt: new Date().toISOString() }
+    { id: 'u1', name: 'Alice', preferredWorkload: 18, completedCourseIds: [], degree: 'CS', degreeCourseIds: [], plannedCourses: {}, createdAt: new Date().toISOString() },
+    { id: 'u2', name: 'Bob', preferredWorkload: 16, completedCourseIds: [], degree: 'CS', degreeCourseIds: [], plannedCourses: {}, createdAt: new Date().toISOString() },
+    { id: 'u3', name: 'Charlie', preferredWorkload: 15, completedCourseIds: [], degree: 'CS', degreeCourseIds: [], plannedCourses: {}, createdAt: new Date().toISOString() }
   ])
   await db.writeRequests([])
   await db.writeFriendships([])

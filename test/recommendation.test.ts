@@ -9,21 +9,27 @@ describe('Recommendation service', () => {
       name: 'Alice',
       friendIds: ['u2'],
       preferredWorkload: 18,
-      completedCourseIds: ['c2']
+      completedCourseIds: ['c2'],
+      degree: 'Computer Science',
+      plannedCourses: {}
     },
     {
       id: 'u2',
       name: 'Bob',
       friendIds: ['u1'],
       preferredWorkload: 16,
-      completedCourseIds: ['c1']
+      completedCourseIds: ['c1'],
+      degree: 'Software Engineering',
+      plannedCourses: {}
     },
     {
       id: 'u3',
       name: 'Charlie',
       friendIds: [],
       preferredWorkload: 15,
-      completedCourseIds: []
+      completedCourseIds: [],
+      degree: 'Mathematics',
+      plannedCourses: {}
     }
   ]
 
