@@ -37,14 +37,17 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 const port = Number(process.env.PORT ?? 3002)
 
-async function start() {
+export async function start() {
   await migrate()
   app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`)
   })
 }
 
-void start().catch((error) => {
-  console.error('Failed to start server:', error)
-  process.exitCode = 1
-})
+// Only auto-start when this file is the main module (node src/server.ts)
+if (process.argv[1] === filename) {
+  void start().catch((error) => {
+    console.error('Failed to start server:', error)
+    process.exitCode = 1
+  })
+}

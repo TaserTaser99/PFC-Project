@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import os from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { degreePlans } from './data/degreePlans.js'
 import type {
@@ -10,7 +11,7 @@ import type {
   UserProfile
 } from './models.js'
 
-const DATA_DIR = path.resolve(process.cwd(), process.env.DB_DIR ?? 'db')
+const DATA_DIR = path.resolve(process.env.DB_DIR ?? path.join(os.tmpdir(), 'pfc-db'))
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
 const REQUESTS_FILE = path.join(DATA_DIR, 'friend_requests.json')
 const FRIENDS_FILE = path.join(DATA_DIR, 'friendships.json')
