@@ -2,7 +2,6 @@ import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import serverless from 'serverless-http'
 import { migrate } from './db.js'
 import { router } from './routes.js'
 
@@ -46,7 +45,6 @@ export async function start() {
 }
 
 export default app
-export const handler = serverless(app)
 
 // Only auto-start when this file is the main module (node src/server.ts)
 if (process.argv[1] === filename) {

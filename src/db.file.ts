@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { degreePlans } from './data/degreePlans.js'
@@ -10,7 +11,17 @@ import type {
   UserProfile
 } from './models.js'
 
-const DATA_DIR = path.resolve(process.cwd(), process.env.DB_DIR ?? 'db')
+// Serverless platforms (Vercel, AWS Lambda) only allow writes under the OS
+// temporary directory, so the store defaults there when deployed. Data written
+// to /tmp is ephemeral: it disappears whenever the function instance recycles.
+const DEFAULT_DATA_DIR =
+  process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join(os.tmpdir(), 'pfc-db')
+    : path.resolve(process.cwd(), 'db')
+
+const DATA_DIR = process.env.DB_DIR
+  ? path.resolve(process.cwd(), process.env.DB_DIR)
+  : DEFAULT_DATA_DIR
 const USERS_FILE = path.join(DATA_DIR, 'users.json')
 const REQUESTS_FILE = path.join(DATA_DIR, 'friend_requests.json')
 const FRIENDS_FILE = path.join(DATA_DIR, 'friendships.json')
@@ -134,31 +145,23 @@ async function readJsonArray<T>(file: string): Promise<T[]> {
   }
 }
 
+// Deliberately does not take the mutation queue: callers that need
+// read-modify-write consistency wrap the whole operation in withDbMutation,
+// and taking the queue here as well would deadlock those callers.
 async function writeJsonAtomic<T>(file: string, data: T[]) {
-  const previous = mutationQueue
-  let release!: () => void
-  mutationQueue = new Promise<void>((resolve) => {
-    release = resolve
-  })
-
-  await previous
+  await ensureDir()
+  const temporaryFile = `${file}.${process.pid}.${randomUUID()}.tmp`
+  await fs.writeFile(temporaryFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8')
   try {
-    await ensureDir()
-    const temporaryFile = `${file}.${process.pid}.${randomUUID()}.tmp`
-    await fs.writeFile(temporaryFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8')
+    await fs.rename(temporaryFile, file)
+  } catch (err) {
     try {
+      await fs.unlink(file).catch(() => {})
       await fs.rename(temporaryFile, file)
-    } catch (err) {
-      try {
-        await fs.unlink(file).catch(() => {})
-        await fs.rename(temporaryFile, file)
-      } catch (err2) {
-        await fs.unlink(temporaryFile).catch(() => {})
-        throw err2
-      }
+    } catch (err2) {
+      await fs.unlink(temporaryFile).catch(() => {})
+      throw err2
     }
-  } finally {
-    release()
   }
 }
 
