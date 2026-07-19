@@ -37,6 +37,14 @@ function getDegreePlanForUser(user) {
   )
 }
 
+function getDegreeCourseIds(user) {
+  const degreePlan = getDegreePlanForUser(user)
+  if (degreePlan?.courseIds?.length) {
+    return degreePlan.courseIds
+  }
+  return user?.degreeCourseIds ?? []
+}
+
 function getUserDegreeRequirementItems(user) {
   const degreePlan = getDegreePlanForUser(user)
 
@@ -619,12 +627,36 @@ function renderSidebar() {
 
 function renderSearch() {
   const q = els.courseSearch.value.trim().toLowerCase()
-  const results = state.courses.filter((c) => {
-    if (!q) {
-      return true
-    }
-    return c.title.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
-  })
+  const me = getCurrentUser()
+  const degreeCourseIds = getDegreeCourseIds(me)
+  const degreeCourseSet = new Set(degreeCourseIds)
+  const degreeCourseOrder = new Map(
+    degreeCourseIds.map((courseId, index) => [courseId, index])
+  )
+  const results = state.courses
+    .filter((course) => {
+      if (!q) {
+        return true
+      }
+      return (
+        course.title.toLowerCase().includes(q) ||
+        course.code.toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => {
+      const aIsDegreeCourse = degreeCourseSet.has(a.id)
+      const bIsDegreeCourse = degreeCourseSet.has(b.id)
+      if (aIsDegreeCourse !== bIsDegreeCourse) {
+        return aIsDegreeCourse ? -1 : 1
+      }
+      if (aIsDegreeCourse && bIsDegreeCourse) {
+        return (
+          (degreeCourseOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (degreeCourseOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+        )
+      }
+      return a.code.localeCompare(b.code)
+    })
 
   els.searchMeta.textContent = `${results.length} course${results.length === 1 ? "" : "s"} found`
 
@@ -632,9 +664,13 @@ function renderSearch() {
     ? results.map((course) => {
       const friendsDoing = getFriendsDoingCourse(course.id)
       const isCompleted = Boolean(course.completed)
+      const isDegreeCourse = degreeCourseSet.has(course.id)
       return `
         <article class="course-card clickable ${isCompleted ? 'completed' : ''}" data-course-id="${escapeHTML(course.id)}" role="button" tabindex="0" aria-pressed="${isCompleted}">
-          <h4>${escapeHTML(course.code)} - ${escapeHTML(course.title)}</h4>
+          <div class="course-title-row">
+            <h4>${escapeHTML(course.code)} - ${escapeHTML(course.title)}</h4>
+            ${isDegreeCourse ? '<span class="pill degree-pill">Your degree</span>' : ''}
+          </div>
           <div class="course-meta">Terms ${course.terms.join(', ')} | Workload ${course.workload}/10 | Popularity ${course.popularity}</div>
           <div class="course-meta">${isCompleted ? 'Completed — click to unmark' : 'Click to mark as completed'}</div>
           <div class="course-meta">Friends taking this: ${friendsDoing.length}</div>
@@ -672,8 +708,11 @@ function recommendCourses(userId) {
     return []
   }
 
+  const degreeCourseIds = new Set(getDegreeCourseIds(me))
+
   return state.courses
     .filter((course) => !(me.completedCourseIds ?? []).includes(course.id))
+    .filter((course) => degreeCourseIds.size === 0 || degreeCourseIds.has(course.id))
     .map((course) => {
       const friendCount = getFriendsDoingCourse(course.id).length
       const score = friendCount * 2 + course.popularity / 100 + (10 - course.workload)

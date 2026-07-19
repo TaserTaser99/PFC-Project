@@ -54,10 +54,14 @@ body {
   position: sticky;
   top: 0;
   z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 18px;
   backdrop-filter: blur(8px);
   background: color-mix(in oklab, var(--bg) 88%, white 12%);
   border-bottom: 1px solid var(--line);
-  padding: 16px 22px;
+  padding: 10px 20px;
 }
 
 .brand {
@@ -67,22 +71,23 @@ body {
 }
 
 .brand-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 15px;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
   box-shadow: 0 8px 20px rgba(14, 124, 97, 0.18);
 }
 
 .brand h1 {
   margin: 0;
   font-family: "Fraunces", serif;
-  font-size: 2rem;
+  font-size: 1.75rem;
   letter-spacing: -0.5px;
 }
 
 .brand p {
-  margin: 4px 0 14px;
+  margin: 1px 0 0;
   color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .topbar-actions {
@@ -90,7 +95,6 @@ body {
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
 }
 
 .topbar-degree-select {
@@ -99,8 +103,9 @@ body {
 }
 
 .tabs {
+  grid-column: 1 / -1;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -108,7 +113,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: #fff;
-  padding: 9px 14px;
+  padding: 7px 12px;
   font-size: 0.95rem;
   cursor: pointer;
   transition: transform 160ms ease, background 160ms ease;
@@ -247,6 +252,19 @@ select:focus {
 
 .course-card h4 {
   margin: 0;
+}
+
+.course-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.degree-pill {
+  flex: 0 0 auto;
+  background: #e2f5ee;
+  font-weight: 700;
 }
 
 .course-meta {
@@ -502,7 +520,17 @@ select:focus-visible {
 
 @media (max-width: 560px) {
   .topbar {
-    padding: 14px;
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .tabs {
+    grid-column: 1;
   }
 
   .layout {
