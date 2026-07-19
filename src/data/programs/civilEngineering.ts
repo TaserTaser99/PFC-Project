@@ -28,6 +28,11 @@ export const civilEngineering: Program = {
         'MATH1241',
         'PHYS1121',
         'PHYS1131'
+      ],
+      chooseOneGroups: [
+        ['MATH1131', 'MATH1141'],
+        ['MATH1231', 'MATH1241'],
+        ['PHYS1121', 'PHYS1131']
       ]
     },
     {

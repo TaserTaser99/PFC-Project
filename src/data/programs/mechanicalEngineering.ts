@@ -29,6 +29,12 @@ export const mechanicalEngineering: Program = {
         'COMP1511',
         'COMP1911',
         'ENGG1811'
+      ],
+      chooseOneGroups: [
+        ['MATH1131', 'MATH1141'],
+        ['MATH1231', 'MATH1241'],
+        ['PHYS1121', 'PHYS1131'],
+        ['COMP1511', 'COMP1911', 'ENGG1811']
       ]
     },
     {

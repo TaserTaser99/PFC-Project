@@ -29,7 +29,11 @@ export const mathematics: Program = {
       name: 'Mathematics Major - Level 1 Core',
       uocRequired: 12,
       ruleType: 'explicit-pool',
-      coursePool: ['MATH1131', 'MATH1141', 'MATH1231', 'MATH1241']
+      coursePool: ['MATH1131', 'MATH1141', 'MATH1231', 'MATH1241'],
+      chooseOneGroups: [
+        ['MATH1131', 'MATH1141'],
+        ['MATH1231', 'MATH1241']
+      ]
     },
     {
       name: 'Mathematics Major - Level 2 Core',

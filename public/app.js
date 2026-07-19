@@ -27,11 +27,40 @@ function clearStoredUserId() {
   }
 }
 
-function getUserDegreeRequirements(user) {
-  if (user?.degreeCourseIds?.length) {
-    return user.degreeCourseIds
+function getDegreePlanForUser(user) {
+  const degree = user?.degree?.trim().toLowerCase() ?? ''
+  return state.degreePlans.find(
+    (plan) =>
+      plan.id === user?.degree ||
+      plan.label === user?.degree ||
+      (degree && degree.includes(plan.label.toLowerCase()))
+  )
+}
+
+function getUserDegreeRequirementItems(user) {
+  const degreePlan = getDegreePlanForUser(user)
+
+  if (!degreePlan) {
+    const requirementIds = user?.degreeCourseIds?.length
+      ? user.degreeCourseIds
+      : degreeRequirements
+    return requirementIds.map((id) => ({ ids: [id] }))
   }
-  return degreeRequirements
+
+  const courseByCode = new Map(state.courses.map((course) => [course.code, course]))
+  const requiredItems = (degreePlan.requiredCourses ?? [])
+    .map((code) => courseByCode.get(code))
+    .filter(Boolean)
+    .map((course) => ({ ids: [course.id] }))
+  const chooseOneItems = (degreePlan.chooseOne ?? [])
+    .map((group) => group.map((code) => courseByCode.get(code)).filter(Boolean))
+    .filter((courses) => courses.length > 0)
+    .map((courses) => ({
+      ids: courses.map((course) => course.id),
+      label: courses.map((course) => course.code).join(' or ')
+    }))
+
+  return [...requiredItems, ...chooseOneItems]
 }
 
 function getUserDegreeLabel(user) {
@@ -463,11 +492,7 @@ function populateUserSelects() {
 function getCurrentUserDegreePlanId() {
   const me = getCurrentUser()
   if (!me) return ''
-  return (
-    state.degreePlans.find(
-      (plan) => plan.label === me.degree || plan.id === me.degree
-    )?.id ?? ''
-  )
+  return getDegreePlanForUser(me)?.id ?? ''
 }
 
 function populateDegreePlanSelect() {
@@ -730,8 +755,10 @@ function renderProgression() {
     return
   }
   const completed = new Set(me.completedCourseIds ?? [])
-  const requirements = getUserDegreeRequirements(me)
-  const done = requirements.filter((id) => completed.has(id)).length
+  const requirements = getUserDegreeRequirementItems(me)
+  const done = requirements.filter((requirement) =>
+    requirement.ids.some((id) => completed.has(id))
+  ).length
   const total = requirements.length
   const pct = total > 0 ? Math.round((done / total) * 100) : 0
 
@@ -740,16 +767,27 @@ function renderProgression() {
   els.progressFill.style.width = `${pct}%`
 
   els.degreeGrid.innerHTML = requirements
-    .map((reqId) => {
-      const course = state.courses.find((c) => c.id === reqId)
-      if (!course) {
+    .map((requirement) => {
+      const courses = requirement.ids
+        .map((id) => state.courses.find((course) => course.id === id))
+        .filter(Boolean)
+      if (!courses.length) {
         return ""
       }
-      const isDone = completed.has(reqId)
+      const completedCourse = courses.find((course) => completed.has(course.id))
+      const isDone = Boolean(completedCourse)
+      const label =
+        requirement.label ??
+        `${courses[0].code} - ${courses[0].title}`
+      const status = completedCourse
+        ? `Completed with ${completedCourse.code}`
+        : courses.length > 1
+          ? 'Complete either course'
+          : 'Pending'
       return `
         <div class="degree-item ${isDone ? "complete" : ""}">
-          <strong>${escapeHTML(course.code)} - ${escapeHTML(course.title)}</strong>
-          <div class="course-meta">${isDone ? "Completed" : "Pending"}</div>
+          <strong>${escapeHTML(label)}</strong>
+          <div class="course-meta">${escapeHTML(status)}</div>
         </div>
       `
     })

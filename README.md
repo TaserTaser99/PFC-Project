@@ -1,6 +1,6 @@
-# PFC Planner
+# Rally
 
-A Peter Farrell Cup prototype for social course planning. Students can search existing users, send and manage friend requests, see accepted friends, compare course plans, and view demonstration course recommendations and degree progression.
+A social course-planning app for building your degree plan and rallying friends around the same classes. Students can search existing users, manage friend requests, compare course plans, and track degree progression.
 
 ## Requirements
 

@@ -97,6 +97,7 @@ export async function signup(
       degree: degreePlan.label,
       degreeCourseIds: degreePlan.courseIds,
       plannedCourses: {},
+      programCode: degreePlan.id,
       createdAt: now
     }
 

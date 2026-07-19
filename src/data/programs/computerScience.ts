@@ -27,6 +27,11 @@ export const computerScience: Program = {
         'MATH1241',
         'COMP3121',
         'COMP3821'
+      ],
+      chooseOneGroups: [
+        ['MATH1131', 'MATH1141'],
+        ['MATH1231', 'MATH1241'],
+        ['COMP3121', 'COMP3821']
       ]
     },
     {

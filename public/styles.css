@@ -60,10 +60,24 @@ body {
   padding: 16px 22px;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo {
+  width: 58px;
+  height: 58px;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(14, 124, 97, 0.18);
+}
+
 .brand h1 {
   margin: 0;
   font-family: "Fraunces", serif;
-  letter-spacing: 0.3px;
+  font-size: 2rem;
+  letter-spacing: -0.5px;
 }
 
 .brand p {

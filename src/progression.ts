@@ -71,8 +71,13 @@ function applySubstitutions(
  * counted toward one category isn't also double-counted by a later one. */
 function matchCategory(
   category: RequirementCategory,
-  pool: string[]
-): { matchedCodes: string[]; remainingPool: string[] } {
+  pool: string[],
+  blockedChooseOneGroups = new Set<number>()
+): {
+  matchedCodes: string[]
+  remainingPool: string[]
+  matchedChooseOneGroups: Set<number>
+} {
   let candidates: string[]
 
   switch (category.ruleType) {
@@ -89,7 +94,32 @@ function matchCategory(
       candidates = [...pool]
       break
     case 'checklist':
-      return { matchedCodes: [], remainingPool: pool }
+      return {
+        matchedCodes: [],
+        remainingPool: pool,
+        matchedChooseOneGroups: new Set()
+      }
+  }
+
+  const chooseOneGroups = category.chooseOneGroups ?? []
+  const selectedChooseOneGroups = new Set<number>()
+  candidates = candidates.filter((code) => {
+    const groupIndex = chooseOneGroups.findIndex((group) => group.includes(code))
+    if (groupIndex === -1) return true
+    if (blockedChooseOneGroups.has(groupIndex) || selectedChooseOneGroups.has(groupIndex)) {
+      return false
+    }
+
+    selectedChooseOneGroups.add(groupIndex)
+    return true
+  })
+
+  // Only report groups whose selected course was actually consumed before the
+  // category reached its UOC requirement.
+  const matchedChooseOneGroups = new Set<number>()
+  const recordMatchedGroup = (code: string) => {
+    const groupIndex = chooseOneGroups.findIndex((group) => group.includes(code))
+    if (groupIndex !== -1) matchedChooseOneGroups.add(groupIndex)
   }
 
   // Consume greedily in list order until the requirement is met; any-course style
@@ -100,11 +130,16 @@ function matchCategory(
   for (const code of candidates) {
     if (uocSoFar >= category.uocRequired) break
     matchedCodes.push(code)
+    recordMatchedGroup(code)
     uocSoFar += courseUOC(code)
   }
 
   const matchedSet = new Set(matchedCodes)
-  return { matchedCodes, remainingPool: pool.filter((code) => !matchedSet.has(code)) }
+  return {
+    matchedCodes,
+    remainingPool: pool.filter((code) => !matchedSet.has(code)),
+    matchedChooseOneGroups
+  }
 }
 
 function evaluateCategory(
@@ -132,10 +167,11 @@ function evaluateCategory(
     }
   }
 
-  const { matchedCodes: matchedCompleted, remainingPool: remainingCompleted } = matchCategory(
-    category,
-    completedPool
-  )
+  const {
+    matchedCodes: matchedCompleted,
+    remainingPool: remainingCompleted,
+    matchedChooseOneGroups
+  } = matchCategory(category, completedPool)
   const rawCompletedUOC =
     matchedCompleted.reduce((sum, code) => sum + courseUOC(code), 0) + completedBonus
   const uocCompleted = Math.min(rawCompletedUOC, category.uocRequired)
@@ -143,7 +179,8 @@ function evaluateCategory(
   const remainingNeed = category.uocRequired - uocCompleted
   const { matchedCodes: matchedPlanned, remainingPool: remainingPlanned } = matchCategory(
     { ...category, uocRequired: remainingNeed },
-    plannedPool
+    plannedPool,
+    matchedChooseOneGroups
   )
   const rawPlannedUOC = matchedPlanned.reduce((sum, code) => sum + courseUOC(code), 0) + plannedBonus
   const uocPlanned = Math.min(rawPlannedUOC, Math.max(remainingNeed, 0))

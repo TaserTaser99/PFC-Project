@@ -37,6 +37,24 @@ body {
   box-shadow: 0 20px 50px rgba(25, 34, 29, 0.08);
 }
 
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: var(--accent);
+  font-family: "Fraunces", serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+}
+
+.auth-brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  box-shadow: 0 7px 18px rgba(14, 124, 97, 0.16);
+}
+
 h1 {
   margin: 0;
   font-family: "Fraunces", serif;

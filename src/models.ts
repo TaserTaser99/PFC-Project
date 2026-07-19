@@ -148,6 +148,8 @@ export type RequirementCategory = {
   uocRequired: number
   ruleType: RequirementRuleType
   coursePool?: string[]
+  /** Each nested group represents one requirement that any single listed course satisfies. */
+  chooseOneGroups?: string[][]
   pattern?: CoursePattern
   exclusions?: CourseExclusions
   minSubsetUOC?: SubsetRule
