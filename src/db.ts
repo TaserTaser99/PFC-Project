@@ -1,6 +1,20 @@
-// Facade loader: use the file backend by default.
-const DB_TYPE = 'file'
-const implPromise: Promise<any> = import('./db.file.js')
+// Load .env for local development; on Vercel env vars are injected directly
+// and no .env file exists, and Node < 20.12 lacks loadEnvFile entirely.
+try {
+  process.loadEnvFile()
+} catch {
+  // no .env file (or unsupported Node): fall through to whatever is set
+}
+
+// Facade loader. An explicit DB_DIR (used by the test suite) pins the file
+// backend so tests stay hermetic even when a DATABASE_URL is configured;
+// otherwise a DATABASE_URL selects postgres. DB_TYPE overrides everything.
+const DB_TYPE =
+  process.env.DB_TYPE ??
+  (process.env.DB_DIR ? 'file' : process.env.DATABASE_URL ? 'postgres' : 'file')
+
+const implPromise: Promise<any> =
+  DB_TYPE === 'postgres' ? import('./db.postgres.js') : import('./db.file.js')
 
 export async function withDbMutation<T>(operation: () => Promise<T>): Promise<T> {
   const impl = await implPromise
